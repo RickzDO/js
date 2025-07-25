@@ -23,8 +23,6 @@ let userRole = null;
 let map = null;
 let markers = {};
 let gpsInterval = null;
-let rutasActivas = {};
-let destinosCoords = {};
 
 // Agregar después de las variables globales existentes
 let rutasActivas = {}; // Para almacenar las rutas dibujadas
@@ -55,6 +53,23 @@ function formatearHora12(hora24) {
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 PRO-REQUEST v2 Iniciando...');
+	
+	// Verificar si existe el formulario antes de agregar listener
+    const asignarForm = document.getElementById('asignarVehiculoForm');
+    if (asignarForm) {
+        asignarForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const choferId = document.getElementById('choferParaVehiculo').value;
+            const vehiculoId = document.getElementById('vehiculoParaChofer').value;
+        
+            if (choferId && vehiculoId) {
+                await asignarVehiculoAChofer(choferId, vehiculoId);
+                cargarChoferesSinVehiculo();
+                cargarVehiculosSinChofer();
+                cargarListaVehiculos();
+            }
+        });
+    }
     
     // Configurar listeners de formularios
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -1106,8 +1121,14 @@ async function cargarDatosAdmin() {
     
     // Cargar lista de vehículos
     cargarListaVehiculos();
-	cargarChoferesSinVehiculo();
-    cargarVehiculosSinChofer();
+	if (typeof cargarChoferesSinVehiculo === 'function') {
+       cargarChoferesSinVehiculo();
+    }
+    if (typeof cargarVehiculosSinChofer === 'function') {
+       cargarVehiculosSinChofer();
+    }
+	//cargarChoferesSinVehiculo();
+    //cargarVehiculosSinChofer();
 }
 
 // ===============================
@@ -1326,6 +1347,9 @@ async function handleRegistrarUsuario(e) {
     if (tipo === 'empleado') {
         nuevoUsuario.departamento = document.getElementById('nuevoUserDepartamento').value;
         nuevoUsuario.vehiculo_asignado = null;
+	if (tipo === 'chofer') {
+       await crearEntradaGPSInicial(userId, nombre);
+    }
     } else if (tipo === 'chofer') {
         nuevoUsuario.licencia = document.getElementById('nuevoUserLicencia').value;
         nuevoUsuario.vehiculo_asignado = null; // Asignar después
@@ -1335,10 +1359,7 @@ async function handleRegistrarUsuario(e) {
     try {
         // Crear usuario
         await db.ref(`usuarios/${userId}`).set(nuevoUsuario);
-		if (tipo === 'chofer') {
-            await crearEntradaGPSInicial(userId, nombre);
-    }
-        
+		        
         showAlert(`Usuario ${nombre} registrado exitosamente con ID: ${userId}`, 'success');
         document.getElementById('registrarUsuarioForm').reset();
 		
@@ -1350,6 +1371,30 @@ async function handleRegistrarUsuario(e) {
         console.error('Error registrando usuario:', error);
         showAlert('Error al registrar el usuario', 'danger');
     }
+}
+
+
+
+async function crearEntradaGPSInicial(choferId, nombreChofer) {
+    const entradaGPS = {
+        vehiculo_id: null, // Sin vehículo asignado aún
+        lat: 18.4861, // Coordenadas por defecto (empresa)
+        lng: -69.9312,
+        timestamp: Date.now(),
+        velocidad: 0,
+        direccion: "Norte",
+        activo: false,
+        chofer: nombreChofer,
+        chofer_id: choferId,
+        placa: "Sin asignar",
+        ultimo_update: new Date().toLocaleTimeString('es-DO'),
+        estado_motor: "apagado",
+        nivel_combustible: 0,
+        tipo_vehiculo: "sin asignar"
+    };
+    
+    // Guardar con el ID del chofer temporalmente
+    await db.ref(`flotillas_gps/TEMP_${choferId}`).set(entradaGPS);
 }
 
 // AGREGAR estas funciones
@@ -1444,28 +1489,6 @@ async function cargarVehiculosSinChofer() {
     } catch (error) {
         console.error('Error cargando vehículos:', error);
     }
-}
-
-async function crearEntradaGPSInicial(choferId, nombreChofer) {
-    const entradaGPS = {
-        vehiculo_id: null, // Sin vehículo asignado aún
-        lat: 18.4861, // Coordenadas por defecto (empresa)
-        lng: -69.9312,
-        timestamp: Date.now(),
-        velocidad: 0,
-        direccion: "Norte",
-        activo: false,
-        chofer: nombreChofer,
-        chofer_id: choferId,
-        placa: "Sin asignar",
-        ultimo_update: new Date().toLocaleTimeString('es-DO'),
-        estado_motor: "apagado",
-        nivel_combustible: 0,
-        tipo_vehiculo: "sin asignar"
-    };
-    
-    // Guardar con el ID del chofer temporalmente
-    await db.ref(`flotillas_gps/TEMP_${choferId}`).set(entradaGPS);
 }
 
 // ===============================
