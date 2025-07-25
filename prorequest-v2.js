@@ -23,6 +23,8 @@ let userRole = null;
 let map = null;
 let markers = {};
 let gpsInterval = null;
+let rutasActivas = {};
+let destinosCoords = {};
 
 // Agregar después de las variables globales existentes
 let rutasActivas = {}; // Para almacenar las rutas dibujadas
@@ -1104,6 +1106,8 @@ async function cargarDatosAdmin() {
     
     // Cargar lista de vehículos
     cargarListaVehiculos();
+	cargarChoferesSinVehiculo();
+    cargarVehiculosSinChofer();
 }
 
 // ===============================
@@ -1331,9 +1335,14 @@ async function handleRegistrarUsuario(e) {
     try {
         // Crear usuario
         await db.ref(`usuarios/${userId}`).set(nuevoUsuario);
+		if (tipo === 'chofer') {
+            await crearEntradaGPSInicial(userId, nombre);
+    }
         
         showAlert(`Usuario ${nombre} registrado exitosamente con ID: ${userId}`, 'success');
         document.getElementById('registrarUsuarioForm').reset();
+		
+		
         
         // Enviar notificación
         mostrarNotificacion('Usuario registrado', `Se ha creado el usuario ${userId} - ${nombre}`);
@@ -1341,6 +1350,122 @@ async function handleRegistrarUsuario(e) {
         console.error('Error registrando usuario:', error);
         showAlert('Error al registrar el usuario', 'danger');
     }
+}
+
+// AGREGAR estas funciones
+
+async function asignarVehiculoAChofer(choferId, vehiculoId) {
+    try {
+        // Obtener datos del vehículo
+        const vehiculoSnap = await db.ref(`vehiculos/${vehiculoId}`).once('value');
+        const vehiculo = vehiculoSnap.val();
+        
+        // Obtener datos del chofer
+        const choferSnap = await db.ref(`usuarios/${choferId}`).once('value');
+        const chofer = choferSnap.val();
+        
+        // Actualizar chofer con vehículo
+        await db.ref(`usuarios/${choferId}/vehiculo_asignado`).set(vehiculoId);
+        
+        // Actualizar vehículo con chofer
+        await db.ref(`vehiculos/${vehiculoId}/chofer_asignado`).set(choferId);
+        
+        // Eliminar entrada temporal si existe
+        await db.ref(`flotillas_gps/TEMP_${choferId}`).remove();
+        
+        // Crear/actualizar entrada en flotillas_gps con el vehículo real
+        const entradaGPS = {
+            vehiculo_id: vehiculoId,
+            lat: 18.4861,
+            lng: -69.9312,
+            timestamp: Date.now(),
+            velocidad: 0,
+            direccion: "Norte",
+            activo: false,
+            chofer: chofer.nombre,
+            chofer_id: choferId,
+            placa: vehiculo.placa,
+            ultimo_update: new Date().toLocaleTimeString('es-DO'),
+            estado_motor: "apagado",
+            nivel_combustible: vehiculo.nivel_combustible || 50,
+            tipo_vehiculo: vehiculo.tipo
+        };
+        
+        await db.ref(`flotillas_gps/${vehiculoId}`).set(entradaGPS);
+        
+        showAlert(`Vehículo ${vehiculo.placa} asignado a ${chofer.nombre}`, 'success');
+    } catch (error) {
+        console.error('Error asignando vehículo:', error);
+        showAlert('Error al asignar vehículo', 'danger');
+    }
+}
+
+async function cargarChoferesSinVehiculo() {
+    const select = document.getElementById('choferParaVehiculo');
+    select.innerHTML = '<option value="">Seleccione un chofer...</option>';
+    
+    try {
+        const choferesSnap = await db.ref('usuarios')
+            .orderByChild('rol')
+            .equalTo('chofer')
+            .once('value');
+        
+        const choferes = choferesSnap.val() || {};
+        
+        Object.entries(choferes).forEach(([id, chofer]) => {
+            if (!chofer.vehiculo_asignado) {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = `${chofer.nombre} (${id})`;
+                select.appendChild(option);
+            }
+        });
+    } catch (error) {
+        console.error('Error cargando choferes:', error);
+    }
+}
+
+async function cargarVehiculosSinChofer() {
+    const select = document.getElementById('vehiculoParaChofer');
+    select.innerHTML = '<option value="">Seleccione un vehículo...</option>';
+    
+    try {
+        const vehiculosSnap = await db.ref('vehiculos').once('value');
+        const vehiculos = vehiculosSnap.val() || {};
+        
+        Object.entries(vehiculos).forEach(([id, vehiculo]) => {
+            if (!vehiculo.chofer_asignado && vehiculo.estado === 'activo') {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = `${vehiculo.placa} - ${vehiculo.marca} ${vehiculo.modelo}`;
+                select.appendChild(option);
+            }
+        });
+    } catch (error) {
+        console.error('Error cargando vehículos:', error);
+    }
+}
+
+async function crearEntradaGPSInicial(choferId, nombreChofer) {
+    const entradaGPS = {
+        vehiculo_id: null, // Sin vehículo asignado aún
+        lat: 18.4861, // Coordenadas por defecto (empresa)
+        lng: -69.9312,
+        timestamp: Date.now(),
+        velocidad: 0,
+        direccion: "Norte",
+        activo: false,
+        chofer: nombreChofer,
+        chofer_id: choferId,
+        placa: "Sin asignar",
+        ultimo_update: new Date().toLocaleTimeString('es-DO'),
+        estado_motor: "apagado",
+        nivel_combustible: 0,
+        tipo_vehiculo: "sin asignar"
+    };
+    
+    // Guardar con el ID del chofer temporalmente
+    await db.ref(`flotillas_gps/TEMP_${choferId}`).set(entradaGPS);
 }
 
 // ===============================
