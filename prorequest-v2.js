@@ -2,14 +2,14 @@
 // ===============================
 // Configuración Firebase
 const firebaseConfig = {
-    apiKey: "AIzaSyBS9FUUAlrm3STTMEv8Ag6LaQLa5evDbjo",
+    apiKey: "",
     // ⚠️ Corrige estos dos valores con los reales de tu proyecto si aún no lo hiciste:
     authDomain: "pro-request.firebaseapp.com",
     databaseURL: "https://pro-request-default-rtdb.firebaseio.com",
     projectId: "pro-request",
     storageBucket: "pro-request.appspot.com",
-    messagingSenderId: "287432989627",
-    appId: "1:287432989627:android:87f0b9cb6c8c5c60e5029e"
+    messagingSenderId: "",
+    appId: ""
 };
 
 // Inicializar Firebase
@@ -354,7 +354,7 @@ function dibujarRutaSimple(vehiculoId, origen, destino, destinoNombre) {
 // Función para ruta real con OpenRouteService (GRATIS)
 async function dibujarRutaReal(vehiculoId, origen, destino, destinoNombre) {
     // API Key gratuita de OpenRouteService (registrarse en openrouteservice.org)
-    const API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ijc0MzVmN2NlMDQxYjRlOTA5MTQ3MjJhYmJhNDkwOGJjIiwiaCI6Im11cm11cjY0In0='; // Reemplazar con tu API key
+    const API_KEY = '6Im11cm11cjY0In0='; // Reemplazar con tu API key
     
     try {
         const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${API_KEY}&start=${origen.lng},${origen.lat}&end=${destino.lng},${destino.lat}`;
