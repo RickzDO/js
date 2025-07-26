@@ -4,8 +4,8 @@
 const firebaseConfig = {
     apiKey: "",
     // ⚠️ Corrige estos dos valores con los reales de tu proyecto si aún no lo hiciste:
-    authDomain: "pro-request.firebaseapp.com",
-    databaseURL: "https://pro-request-default-rtdb.firebaseio.com",
+    authDomain: "",
+    databaseURL: "",
     projectId: "pro-request",
     storageBucket: "pro-request.appspot.com",
     messagingSenderId: "",
